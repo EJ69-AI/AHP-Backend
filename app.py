@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://ahp-frontend.vercel.app"}})  # Allow frontend origin
+CORS(app)  # Allow all origins (modify for production)
 
 # Configuration
 RESULTS_DIR = os.getenv("RESULTS_DIR", "results")
@@ -52,60 +52,22 @@ def submit_survey():
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        respondent_name = data.get("name", "Anonymous")
-        pairwise_comparisons = data.get("comparisons", [])
-
-        # Save to CSV
-        file_path = os.path.join(RESULTS_DIR, "survey_results.csv")
-        with open(file_path, mode="a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([respondent_name] + pairwise_comparisons)
-
-        return jsonify({"message": "Survey submitted successfully!"}), 200
-
-    except Exception as e:
-        logger.error(f"Error in submit_survey: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/save_csv', methods=['POST'])
-def save_csv():
-    """Endpoint to save survey data as a CSV file."""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON"}), 400
-
         respondent_info = data.get('respondentInfo', {})
-        first_name = respondent_info.get('firstName', 'Unknown')
-        last_name = respondent_info.get('lastName', 'Unknown')
-        bridge_option = data.get('selectedBridge', 'N/A')
-        matrix = data.get('responses', [])
+        selected_bridge = data.get('selectedBridge', 'N/A')
+        responses = data.get('responses', [])
 
-        if not matrix or not all(isinstance(row, list) for row in matrix):
-            return jsonify({"error": "Matrix data missing or invalid"}), 400
-
-        # Calculate priority weights and consistency ratio
-        priority_weights = calculate_priority_weights(matrix)
-        consistency_ratio = calculate_consistency_ratio(matrix)
-
-        # Sanitize filename
-        sanitized_first_name = "".join([c for c in first_name if c.isalnum() or c in (' ', '_')]).rstrip()
-        sanitized_last_name = "".join([c for c in last_name if c.isalnum() or c in (' ', '_')]).rstrip()
-        filename = f"{RESULTS_DIR}/{sanitized_first_name}_{sanitized_last_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
-
-        # Save matrix to CSV
-        df = pd.DataFrame(matrix)
-        df.to_csv(filename, index=False)
+        # Perform calculations
+        priority_weights = calculate_priority_weights(responses)
+        consistency_ratio = calculate_consistency_ratio(responses)
 
         return jsonify({
-            "message": "CSV saved successfully",
-            "bridgeOption": bridge_option,
+            "message": "Survey submitted successfully!",
             "priorityWeights": priority_weights,
             "consistencyRatio": consistency_ratio
         }), 200
 
     except Exception as e:
-        logger.error(f"Error in save_csv: {e}")
+        logger.error(f"Error in submit_survey: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/save_csv_file', methods=['POST'])
@@ -119,7 +81,6 @@ def save_csv_file():
         csv_content = data['csvContent']
         filename = f"{RESULTS_DIR}/survey_results_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
 
-        # Save CSV content to file
         with open(filename, 'w') as file:
             file.write(csv_content)
 
