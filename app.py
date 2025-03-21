@@ -4,13 +4,19 @@ import numpy as np
 import pandas as pd
 import csv
 import os
+
+app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+
 app = Flask(__name__)
-CORS(app)  # Allow all origins (modify for production)
+CCORS(app, origins=["https://ahp-frontend.vercel.app"])
 
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 @app.route('/submit', methods=['POST'])
+def home():
+    return "API is running!"
+    
 def submit_survey():
     try:
         data = request.json
