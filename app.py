@@ -6,6 +6,14 @@ import csv
 import os
 import logging
 from datetime import datetime
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -18,6 +26,45 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Email Configuration
+SMTP_SERVER = "smtp.gmail.com"  # Replace with your SMTP server
+SMTP_PORT = 587  # Replace with your SMTP port
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
+
+def send_email_with_attachment(file_path, filename):
+    """Send an email with the CSV file as an attachment."""
+    try:
+        # Create the email
+        msg = MIMEMultipart()
+        msg["From"] = EMAIL_ADDRESS
+        msg["To"] = RECIPIENT_EMAIL
+        msg["Subject"] = f"Lima Bridge AHP Survey Results: {filename}"
+
+        # Attach the CSV file
+        with open(file_path, "rb") as attachment:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header(
+                "Content-Disposition",
+                f"attachment; filename={filename}",
+            )
+            msg.attach(part)
+
+        # Send the email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        logger.info(f"Email sent successfully with attachment: {filename}")
+        return True
+    except Exception as e:
+        logger.error(f"Error sending email: {e}")
+        return False
 
 # Utility Functions
 def calculate_priority_weights(matrix):
@@ -39,11 +86,6 @@ def calculate_consistency_ratio(matrix):
     return consistency_index / random_index if random_index != 0 else 0
 
 # Routes
-@app.route('/')
-def home():
-    """Root endpoint."""
-    return jsonify({"message": "Welcome to the AHP Backend!"}), 200
-
 @app.route('/submit', methods=['POST'])
 def submit_survey():
     """Endpoint to submit survey data."""
@@ -60,35 +102,41 @@ def submit_survey():
         priority_weights = calculate_priority_weights(responses)
         consistency_ratio = calculate_consistency_ratio(responses)
 
-        return jsonify({
-            "message": "Survey submitted successfully!",
-            "priorityWeights": priority_weights,
-            "consistencyRatio": consistency_ratio
-        }), 200
+        # Generate CSV content
+        csv_content = generate_csv(respondent_info, selected_bridge, responses, priority_weights, consistency_ratio)
+        file_name = f"survey_results_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+        file_path = os.path.join(RESULTS_DIR, file_name)
+
+        # Save CSV file
+        with open(file_path, 'w') as file:
+            file.write(csv_content)
+
+        # Send CSV file as email attachment
+        if send_email_with_attachment(file_path, file_name):
+            return jsonify({
+                "message": "Survey submitted successfully! CSV file sent via email.",
+                "priorityWeights": priority_weights,
+                "consistencyRatio": consistency_ratio
+            }), 200
+        else:
+            return jsonify({"error": "Failed to send email"}), 500
 
     except Exception as e:
         logger.error(f"Error in submit_survey: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/save_csv_file', methods=['POST'])
-def save_csv_file():
-    """Endpoint to save raw CSV content to a file."""
-    try:
-        data = request.get_json()
-        if not data or 'csvContent' not in data:
-            return jsonify({"error": "Invalid JSON or missing CSV content"}), 400
-
-        csv_content = data['csvContent']
-        filename = f"{RESULTS_DIR}/survey_results_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
-
-        with open(filename, 'w') as file:
-            file.write(csv_content)
-
-        return jsonify({"message": "CSV file saved successfully"}), 200
-
-    except Exception as e:
-        logger.error(f"Error in save_csv_file: {e}")
-        return jsonify({"error": str(e)}), 500
+def generate_csv(respondent_info, selected_bridge, responses, priority_weights, consistency_ratio):
+    """Generate CSV content from survey data."""
+    csv_content = f"Respondent Info: {respondent_info}\n"
+    csv_content += f"Selected Bridge: {selected_bridge}\n\n"
+    csv_content += "Responses Matrix:\n"
+    for row in responses:
+        csv_content += ",".join(map(str, row)) + "\n"
+    csv_content += "\nPriority Weights:\n"
+    for i, weight in enumerate(priority_weights):
+        csv_content += f"Criterion {i + 1}: {weight}\n"
+    csv_content += f"\nConsistency Ratio: {consistency_ratio}\n"
+    return csv_content
 
 # Main Entry Point
 if __name__ == '__main__':
