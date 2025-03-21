@@ -6,9 +6,9 @@ import os
 app = Flask(__name__)
 CORS(app)  # Allow all origins (modify for production)
 
-@app.route('/')
-def home():
-    return "AHP Backend Running"
+@app.route('/submit', methods=['POST'])
+def submit_survey():
+    # Your code to process the survey
 
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
