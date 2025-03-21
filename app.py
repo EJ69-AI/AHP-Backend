@@ -7,8 +7,9 @@ import os
 import logging
 from datetime import datetime
 
+# Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Allow all origins (modify for production)
+CORS(app, resources={r"/*": {"origins": "https://ahp-frontend.vercel.app"}})  # Allow frontend origin
 
 # Configuration
 RESULTS_DIR = os.getenv("RESULTS_DIR", "results")
@@ -18,7 +19,9 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Utility Functions
 def calculate_priority_weights(matrix):
+    """Calculate priority weights from a pairwise comparison matrix."""
     matrix = np.array(matrix, dtype=float)
     column_sums = matrix.sum(axis=0)
     normalized_matrix = matrix / column_sums
@@ -26,6 +29,7 @@ def calculate_priority_weights(matrix):
     return priority_weights.tolist()
 
 def calculate_consistency_ratio(matrix):
+    """Calculate the consistency ratio for a pairwise comparison matrix."""
     matrix = np.array(matrix, dtype=float)
     priority_weights = calculate_priority_weights(matrix)
     consistency_vector = matrix.dot(priority_weights)
@@ -34,8 +38,15 @@ def calculate_consistency_ratio(matrix):
     random_index = [0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][len(matrix) - 1]
     return consistency_index / random_index if random_index != 0 else 0
 
+# Routes
+@app.route('/')
+def home():
+    """Root endpoint."""
+    return jsonify({"message": "Welcome to the AHP Backend!"}), 200
+
 @app.route('/submit', methods=['POST'])
 def submit_survey():
+    """Endpoint to submit survey data."""
     try:
         data = request.json
         if not data:
@@ -44,6 +55,7 @@ def submit_survey():
         respondent_name = data.get("name", "Anonymous")
         pairwise_comparisons = data.get("comparisons", [])
 
+        # Save to CSV
         file_path = os.path.join(RESULTS_DIR, "survey_results.csv")
         with open(file_path, mode="a", newline="") as file:
             writer = csv.writer(file)
@@ -57,6 +69,7 @@ def submit_survey():
 
 @app.route('/save_csv', methods=['POST'])
 def save_csv():
+    """Endpoint to save survey data as a CSV file."""
     try:
         data = request.get_json()
         if not data:
@@ -71,6 +84,7 @@ def save_csv():
         if not matrix or not all(isinstance(row, list) for row in matrix):
             return jsonify({"error": "Matrix data missing or invalid"}), 400
 
+        # Calculate priority weights and consistency ratio
         priority_weights = calculate_priority_weights(matrix)
         consistency_ratio = calculate_consistency_ratio(matrix)
 
@@ -79,6 +93,7 @@ def save_csv():
         sanitized_last_name = "".join([c for c in last_name if c.isalnum() or c in (' ', '_')]).rstrip()
         filename = f"{RESULTS_DIR}/{sanitized_first_name}_{sanitized_last_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
 
+        # Save matrix to CSV
         df = pd.DataFrame(matrix)
         df.to_csv(filename, index=False)
 
@@ -95,6 +110,7 @@ def save_csv():
 
 @app.route('/save_csv_file', methods=['POST'])
 def save_csv_file():
+    """Endpoint to save raw CSV content to a file."""
     try:
         data = request.get_json()
         if not data or 'csvContent' not in data:
@@ -103,6 +119,7 @@ def save_csv_file():
         csv_content = data['csvContent']
         filename = f"{RESULTS_DIR}/survey_results_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
 
+        # Save CSV content to file
         with open(filename, 'w') as file:
             file.write(csv_content)
 
@@ -112,5 +129,6 @@ def save_csv_file():
         logger.error(f"Error in save_csv_file: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Main Entry Point
 if __name__ == '__main__':
-    app.run(debug=os.getenv("DEBUG", "True") == "True", port=int(os.getenv("PORT", 5000)))
+    app.run(debug=os.getenv("DEBUG", "False") == "True", port=int(os.getenv("PORT", 10000)))
