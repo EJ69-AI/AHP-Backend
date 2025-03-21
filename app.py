@@ -4,38 +4,19 @@ import numpy as np
 import pandas as pd
 import csv
 import os
-import sys
+import logging
+from datetime import datetime
 
-# Define Flask app
 app = Flask(__name__)
-CORS(app, origins=["https://ahp-frontend.vercel.app"])
+CORS(app)  # Allow all origins (modify for production)
 
-# Print registered routes AFTER defining app
-print("Registered Routes:", app.url_map, file=sys.stderr)
-
-RESULTS_DIR = "results"
+# Configuration
+RESULTS_DIR = os.getenv("RESULTS_DIR", "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-@app.route('/', methods=['GET'])
-def home():
-    return "API is running!"
-
-@app.route('/submit', methods=['POST'])
-def submit_survey():
-    try:
-        data = request.json
-        respondent_name = data.get("name", "Anonymous")
-        pairwise_comparisons = data.get("comparisons", [])
-
-        file_path = os.path.join(RESULTS_DIR, "survey_results.csv")
-        with open(file_path, mode="a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([respondent_name] + pairwise_comparisons)
-
-        return jsonify({"message": "Survey submitted successfully!"}), 200
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def calculate_priority_weights(matrix):
     matrix = np.array(matrix, dtype=float)
@@ -52,6 +33,27 @@ def calculate_consistency_ratio(matrix):
     consistency_index = (lambda_max - len(matrix)) / (len(matrix) - 1)
     random_index = [0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][len(matrix) - 1]
     return consistency_index / random_index if random_index != 0 else 0
+
+@app.route('/submit', methods=['POST'])
+def submit_survey():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        respondent_name = data.get("name", "Anonymous")
+        pairwise_comparisons = data.get("comparisons", [])
+
+        file_path = os.path.join(RESULTS_DIR, "survey_results.csv")
+        with open(file_path, mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([respondent_name] + pairwise_comparisons)
+
+        return jsonify({"message": "Survey submitted successfully!"}), 200
+
+    except Exception as e:
+        logger.error(f"Error in submit_survey: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/save_csv', methods=['POST'])
 def save_csv():
@@ -72,7 +74,11 @@ def save_csv():
         priority_weights = calculate_priority_weights(matrix)
         consistency_ratio = calculate_consistency_ratio(matrix)
 
-        filename = f"{RESULTS_DIR}/{first_name}_{last_name}.csv"
+        # Sanitize filename
+        sanitized_first_name = "".join([c for c in first_name if c.isalnum() or c in (' ', '_')]).rstrip()
+        sanitized_last_name = "".join([c for c in last_name if c.isalnum() or c in (' ', '_')]).rstrip()
+        filename = f"{RESULTS_DIR}/{sanitized_first_name}_{sanitized_last_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+
         df = pd.DataFrame(matrix)
         df.to_csv(filename, index=False)
 
@@ -84,4 +90,27 @@ def save_csv():
         }), 200
 
     except Exception as e:
-    print(f"Error: {e}")
+        logger.error(f"Error in save_csv: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/save_csv_file', methods=['POST'])
+def save_csv_file():
+    try:
+        data = request.get_json()
+        if not data or 'csvContent' not in data:
+            return jsonify({"error": "Invalid JSON or missing CSV content"}), 400
+
+        csv_content = data['csvContent']
+        filename = f"{RESULTS_DIR}/survey_results_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+
+        with open(filename, 'w') as file:
+            file.write(csv_content)
+
+        return jsonify({"message": "CSV file saved successfully"}), 200
+
+    except Exception as e:
+        logger.error(f"Error in save_csv_file: {e}")
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=os.getenv("DEBUG", "True") == "True", port=int(os.getenv("PORT", 5000)))
