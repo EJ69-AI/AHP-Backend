@@ -5,8 +5,6 @@ import pandas as pd
 import csv
 import os
 
-app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
 app = Flask(__name__)
 CCORS(app, origins=["https://ahp-frontend.vercel.app"])
 
@@ -16,7 +14,10 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 @app.route('/submit', methods=['POST'])
 def home():
     return "API is running!"
-    
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+
 def submit_survey():
     try:
         data = request.json
