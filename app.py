@@ -6,7 +6,7 @@ import csv
 import os
 
 app = Flask(__name__)
-CCORS(app, origins=["https://ahp-frontend.vercel.app"])
+CORS(app, origins=["https://ahp-frontend.vercel.app"])
 
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
