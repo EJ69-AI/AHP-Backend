@@ -7,15 +7,16 @@ import os
 app = Flask(__name__)
 CORS(app)  # Allow all origins (modify for production)
 
+RESULTS_DIR = "results"
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
 @app.route('/submit', methods=['POST'])
 def submit_survey():
     try:
-        # Get JSON data from frontend
         data = request.json
-        respondent_name = data.get("name", "Anonymous")  # Example field
-        pairwise_comparisons = data.get("comparisons", [])  # List of pairwise comparisons
+        respondent_name = data.get("name", "Anonymous")
+        pairwise_comparisons = data.get("comparisons", [])
 
-        # Example: Save to CSV
         file_path = os.path.join(RESULTS_DIR, "survey_results.csv")
         with open(file_path, mode="a", newline="") as file:
             writer = csv.writer(file)
@@ -28,9 +29,6 @@ def submit_survey():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-RESULTS_DIR = "results"
-os.makedirs(RESULTS_DIR, exist_ok=True)
 
 def calculate_priority_weights(matrix):
     matrix = np.array(matrix, dtype=float)
