@@ -83,4 +83,4 @@ def save_csv():
             "consistencyRatio": consistency_ratio
         }), 200
 
-    except Exception 
+    except Exception: 
