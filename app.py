@@ -2,13 +2,32 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
+import csv
 import os
 app = Flask(__name__)
 CORS(app)  # Allow all origins (modify for production)
 
 @app.route('/submit', methods=['POST'])
 def submit_survey():
-    # Your code to process the survey
+    try:
+        # Get JSON data from frontend
+        data = request.json
+        respondent_name = data.get("name", "Anonymous")  # Example field
+        pairwise_comparisons = data.get("comparisons", [])  # List of pairwise comparisons
+
+        # Example: Save to CSV
+        file_path = os.path.join(RESULTS_DIR, "survey_results.csv")
+        with open(file_path, mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([respondent_name] + pairwise_comparisons)
+
+        return jsonify({"message": "Survey submitted successfully!"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
