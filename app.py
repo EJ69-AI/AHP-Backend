@@ -6,7 +6,7 @@ import csv
 import os
 
 import sys
-print("Registered Routes:", app.url_map, file=sys.stderr
+print("Registered Routes:", app.url_map, file=sys.stderr)
 
 app = Flask(__name__)
 CORS(app, origins=["https://ahp-frontend.vercel.app"])
