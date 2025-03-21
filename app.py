@@ -4,23 +4,23 @@ import numpy as np
 import pandas as pd
 import csv
 import os
-
 import sys
-print("Registered Routes:", app.url_map, file=sys.stderr)
 
+# Define Flask app
 app = Flask(__name__)
 CORS(app, origins=["https://ahp-frontend.vercel.app"])
+
+# Print registered routes AFTER defining app
+print("Registered Routes:", app.url_map, file=sys.stderr)
 
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-@app.route('/submit', methods=['POST'])
+@app.route('/', methods=['GET'])
 def home():
     return "API is running!"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
+@app.route('/submit', methods=['POST'])
 def submit_survey():
     try:
         data = request.json
@@ -36,9 +36,6 @@ def submit_survey():
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
 
 def calculate_priority_weights(matrix):
     matrix = np.array(matrix, dtype=float)
@@ -86,26 +83,4 @@ def save_csv():
             "consistencyRatio": consistency_ratio
         }), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/save_csv_file', methods=['POST'])
-def save_csv_file():
-    try:
-        data = request.get_json()
-        if not data or 'csvContent' not in data:
-            return jsonify({"error": "Invalid JSON or missing CSV content"}), 400
-
-        csv_content = data['csvContent']
-        filename = f"{RESULTS_DIR}/survey_results.csv"
-
-        with open(filename, 'w') as file:
-            file.write(csv_content)
-
-        return jsonify({"message": "CSV file saved successfully"}), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    except Exception 
