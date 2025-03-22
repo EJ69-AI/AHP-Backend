@@ -10,10 +10,6 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -30,9 +26,9 @@ logger = logging.getLogger(__name__)
 # Email Configuration
 SMTP_SERVER = "smtp.gmail.com"  # Replace with your SMTP server
 SMTP_PORT = 587  # Replace with your SMTP port
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
+EMAIL_ADDRESS = evanjoseph573@gmail.com
+EMAIL_PASSWORD = rmiwqdowmtfkcmnq
+RECIPIENT_EMAIL = evanjoseph573@gmail.com
 
 def send_email_with_attachment(file_path, filename):
     """Send an email with the CSV file as an attachment."""
