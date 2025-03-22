@@ -65,21 +65,29 @@ def send_email_with_attachment(file_path, filename):
 # Utility Functions
 def calculate_priority_weights(matrix):
     """Calculate priority weights from a pairwise comparison matrix."""
-    matrix = np.array(matrix, dtype=float)
-    column_sums = matrix.sum(axis=0)
-    normalized_matrix = matrix / column_sums
-    priority_weights = normalized_matrix.mean(axis=1)
-    return priority_weights.tolist()
+    try:
+        matrix = np.array(matrix, dtype=float)
+        column_sums = matrix.sum(axis=0)
+        normalized_matrix = matrix / column_sums
+        priority_weights = normalized_matrix.mean(axis=1)
+        return priority_weights.tolist()
+    except Exception as e:
+        logger.error(f"Error calculating priority weights: {e}")
+        raise
 
 def calculate_consistency_ratio(matrix):
     """Calculate the consistency ratio for a pairwise comparison matrix."""
-    matrix = np.array(matrix, dtype=float)
-    priority_weights = calculate_priority_weights(matrix)
-    consistency_vector = matrix.dot(priority_weights)
-    lambda_max = np.sum(consistency_vector / priority_weights) / len(matrix)
-    consistency_index = (lambda_max - len(matrix)) / (len(matrix) - 1)
-    random_index = [0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][len(matrix) - 1]
-    return consistency_index / random_index if random_index != 0 else 0
+    try:
+        matrix = np.array(matrix, dtype=float)
+        priority_weights = calculate_priority_weights(matrix)
+        consistency_vector = matrix.dot(priority_weights)
+        lambda_max = np.sum(consistency_vector / priority_weights) / len(matrix)
+        consistency_index = (lambda_max - len(matrix)) / (len(matrix) - 1)
+        random_index = [0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][len(matrix) - 1]
+        return consistency_index / random_index if random_index != 0 else 0
+    except Exception as e:
+        logger.error(f"Error calculating consistency ratio: {e}")
+        raise
 
 # Routes
 @app.route('/submit', methods=['POST'])
@@ -93,6 +101,10 @@ def submit_survey():
         respondent_info = data.get('respondentInfo', {})
         selected_bridge = data.get('selectedBridge', 'N/A')
         responses = data.get('responses', [])
+
+        # Validate responses
+        if not responses or not all(isinstance(row, list) for row in responses):
+            return jsonify({"error": "Invalid responses format"}), 400
 
         # Perform calculations
         priority_weights = calculate_priority_weights(responses)
