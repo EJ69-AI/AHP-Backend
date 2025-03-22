@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 # Email Configuration
 SMTP_SERVER = "smtp.gmail.com"  # Replace with your SMTP server
 SMTP_PORT = 587  # Replace with your SMTP port
-EMAIL_ADDRESS = evanjoseph573@gmail.com
-EMAIL_PASSWORD = rmiwqdowmtfkcmnq
-RECIPIENT_EMAIL = evanjoseph573@gmail.com
+EMAIL_ADDRESS = "evanjoseph573@gmail.com"
+EMAIL_PASSWORD = "rmiwqdowmtfkcmnq"
+RECIPIENT_EMAIL = "evanjoseph573@gmail.com"
 
 def send_email_with_attachment(file_path, filename):
     """Send an email with the CSV file as an attachment."""
