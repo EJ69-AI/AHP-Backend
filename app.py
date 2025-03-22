@@ -146,6 +146,37 @@ def generate_csv(respondent_info, selected_bridge, responses, priority_weights, 
     csv_content += f"\nConsistency Ratio: {consistency_ratio}\n"
     return csv_content
 
+@app.route('/save_csv_file', methods=['POST', 'OPTIONS'])
+def save_csv_file():
+    """Endpoint to save CSV file."""
+    try:
+        if request.method == 'OPTIONS':
+            # Handle preflight request
+            response = jsonify({"status": "success"})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+            response.headers.add("Access-Control-Allow-Methods", "POST")
+            return response, 200
+
+        data = request.json
+        if not data or 'csvContent' not in data:
+            return jsonify({"error": "No CSV content provided"}), 400
+
+        csv_content = data['csvContent']
+        file_name = f"survey_results_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+        file_path = os.path.join(RESULTS_DIR, file_name)
+
+        # Save CSV file
+        with open(file_path, 'w') as file:
+            file.write(csv_content)
+
+        logger.info(f"CSV file saved successfully: {file_name}")
+        return jsonify({"message": "CSV file saved successfully"}), 200
+
+    except Exception as e:
+        logger.error(f"Error in save_csv_file: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Main Entry Point
 if __name__ == '__main__':
     app.run(debug=os.getenv("DEBUG", "False") == "True", port=int(os.getenv("PORT", 10000)))
