@@ -10,3 +10,8 @@ jobs:
     steps:
       - name: Ping Render Backend
         run: curl -I https://ahp-backend-ujjf.onrender.com
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"  # Runs every 10 minutes
+  workflow_dispatch:  # Allows manual trigger
